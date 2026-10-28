@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { BarChart3, Download, TrendingUp, Calendar, MapPin, Search } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ReportsPage() {
     const reports = await prisma.scan.findMany({
         where: { status: 'COMPLETED' },
