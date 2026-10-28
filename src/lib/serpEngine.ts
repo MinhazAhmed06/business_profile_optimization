@@ -24,6 +24,19 @@ export interface SerpListing {
   isSAB?: boolean;
 }
 
+export interface ScrapeResult extends SerpListing {
+  url?: string;
+  priceLevel?: string;
+  allCategories?: string[];
+  attributes?: string[];
+  hours?: string;
+  photosCount?: number;
+  yearsInBusiness?: number;
+  openNow?: boolean;
+  profileCompleteness?: number;
+  businessProfileId?: string;
+}
+
 export interface ISerpEngine {
   readonly name: string;
   searchPoint(keyword: string, lat: number, lng: number): Promise<SerpListing[]>;

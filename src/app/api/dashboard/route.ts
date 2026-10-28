@@ -1,13 +1,27 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { logger } from '@/lib/logger';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        const scansCount = await prisma.scan.count();
-        const completedScans = await prisma.scan.count({ where: { status: 'COMPLETED' } });
-        const activeScans = await prisma.scan.count({ where: { status: { in: ['RUNNING', 'PENDING'] } } });
+        let userId: string | null = null;
+        try {
+            const authData = await auth();
+            userId = authData.userId;
+        } catch {
+            userId = process.env.DEV_USER_ID || 'user_dev_local';
+        }
+
+        const userWhere = userId ? { userId } : {};
+
+        const scansCount = await prisma.scan.count({ where: userWhere });
+        const completedScans = await prisma.scan.count({ where: { ...userWhere, status: 'COMPLETED' } });
+        const activeScans = await prisma.scan.count({ where: { ...userWhere, status: { in: ['RUNNING', 'PENDING'] } } });
         const recentScans = await prisma.scan.findMany({
+            where: userWhere,
             orderBy: { createdAt: 'desc' },
             take: 5,
         });

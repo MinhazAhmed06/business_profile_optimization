@@ -44,7 +44,7 @@ export async function GET(
         let runId = requestedRunId || scan.currentRunId;
         if (!runId) {
             const latest: any[] = await prisma.$queryRaw(
-                Prisma.sql`SELECT runId FROM Result WHERE scanId = ${id} ORDER BY runAt DESC LIMIT 1`
+                Prisma.sql`SELECT runId FROM "Result" WHERE scanId = ${id} ORDER BY runAt DESC LIMIT 1`
             );
             runId = latest[0]?.runId ?? null;
         }
@@ -52,10 +52,10 @@ export async function GET(
         // Fetch results
         const results: any[] = runId
             ? await prisma.$queryRaw(
-                  Prisma.sql`SELECT topResults FROM Result WHERE scanId = ${id} AND runId = ${runId}`
+                  Prisma.sql`SELECT topResults FROM "Result" WHERE scanId = ${id} AND runId = ${runId}`
               )
             : await prisma.$queryRaw(
-                  Prisma.sql`SELECT topResults FROM Result WHERE scanId = ${id}`
+                  Prisma.sql`SELECT topResults FROM "Result" WHERE scanId = ${id}`
               );
 
         const totalGridPoints = results.length;

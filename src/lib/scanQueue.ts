@@ -1,4 +1,4 @@
-import { runScan } from './scanner';
+import { executeParallelScan as runScan } from './serpEngine';
 import { prisma } from './prisma';
 import { logger } from './logger';
 

@@ -112,12 +112,12 @@ export async function GET(
         const [rawResultsA, rawResultsB] = await Promise.all([
             prisma.$queryRaw(
                 Prisma.sql`SELECT lat, lng, rank, runId, runAt
-                           FROM Result
+                           FROM "Result"
                            WHERE scanId = ${id} AND runId = ${runA}`
             ),
             prisma.$queryRaw(
                 Prisma.sql`SELECT lat, lng, rank, runId, runAt
-                           FROM Result
+                           FROM "Result"
                            WHERE scanId = ${id} AND runId = ${runB}`
             ),
         ]);

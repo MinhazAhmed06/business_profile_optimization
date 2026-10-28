@@ -3,7 +3,7 @@
  * Provides algorithms for analyzing scan results and generating actionable insights
  */
 
-import { ScrapeResult } from './scraper';
+import { ScrapeResult } from './serpEngine';
 
 export interface CategoryAnalysis {
     category: string;

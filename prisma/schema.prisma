@@ -170,6 +170,7 @@ model ReviewAnalysis {
   analysisData  String?  // JSON blob of sentiment metrics
   status        String   @default("PENDING")
   error         String?
+  currentRunId  String?
   createdAt     DateTime @default(now())
   reviews       Review[]
 

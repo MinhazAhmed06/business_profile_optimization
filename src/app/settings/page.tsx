@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Settings as SettingsIcon, User, Bell, Database, Github, Plus, Trash2, CheckCircle2, Globe, Server, Shield, Zap, Info, Loader2, X, AlertCircle, Activity } from 'lucide-react';
 import { Card, Button, Input, Select, Badge } from '@/components/ui';
 import { Telemetry } from '@/components/settings/Telemetry';
+import WhiteLabelSettingsCard from '@/components/settings/WhiteLabelSettingsCard';
 
 export default function SettingsPage() {
     const [name, setName] = useState('Local User');
@@ -14,7 +15,7 @@ export default function SettingsPage() {
     const [showLogs, setShowLogs] = useState(false);
     const [newProxy, setNewProxy] = useState({ host: '', port: '', username: '', password: '', type: 'RESIDENTIAL' });
     const [showAddProxy, setShowAddProxy] = useState(false);
-    const [activeSection, setActiveSection] = useState<'general' | 'proxies' | 'providers' | 'notifications' | 'logs'>('general');
+    const [activeSection, setActiveSection] = useState<'branding' | 'general' | 'proxies' | 'providers' | 'notifications' | 'logs'>('branding');
     const [useSystemProxy, setUseSystemProxy] = useState(true);
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [checkingNotifications, setCheckingNotifications] = useState(false);
@@ -220,19 +221,24 @@ export default function SettingsPage() {
                     <p className="text-xs text-gray-500 font-bold ml-1 uppercase tracking-widest opacity-70">Infrastructure & Spatial Routing Control</p>
                 </div>
                 <div className="flex gap-2 p-1.5 bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto custom-scrollbar">
-                    {['general', 'proxies', 'providers', 'notifications', 'logs'].map((tab) => (
+                    {['branding', 'general', 'proxies', 'providers', 'notifications', 'logs'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveSection(tab as any)}
                             className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all flex-shrink-0 ${activeSection === tab ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'}`}
                         >
-                            {tab === 'logs' ? 'Telemetry' : tab}
+                            {tab === 'logs' ? 'Telemetry' : tab === 'branding' ? 'Agency Branding' : tab}
                         </button>
                     ))}
                 </div>
             </header>
 
             <main className="space-y-6">
+                {activeSection === 'branding' && (
+                    <div className="animate-in fade-in duration-300">
+                        <WhiteLabelSettingsCard />
+                    </div>
+                )}
                 {activeSection === 'general' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-300">
                         <Card className="p-8 border-none shadow-xl ring-1 ring-gray-200 bg-white">

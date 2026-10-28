@@ -183,7 +183,11 @@ export async function POST(req: NextRequest) {
       include: { results: true }
     });
 
-    return NextResponse.json({ success: true, scan: completedScan });
+    return NextResponse.json({
+      ...completedScan,
+      success: true,
+      scan: completedScan
+    });
 
   } catch (error: any) {
     logger.error(`Scan execution failed: ${error.message}`, 'API', { stack: error.stack });

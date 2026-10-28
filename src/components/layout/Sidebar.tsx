@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { UserButton, useUser } from '@clerk/nextjs';
 import {
     LayoutDashboard,
     Settings,
@@ -31,6 +32,7 @@ const navItems = [
 
 export function Sidebar() {
     const pathname = usePathname();
+    const { user } = useUser();
     const [collapsed, setCollapsed] = useState(true);
     const [userName, setUserName] = useState('Local User');
     const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -160,12 +162,10 @@ export function Sidebar() {
                 </div>
 
                 <div className="flex items-center gap-3 w-full border-t border-gray-200 pt-4">
-                    <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold border border-blue-200 shrink-0 uppercase">
-                        {userName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                    </div>
+                    <UserButton />
                     {!collapsed && (
                         <div className="overflow-hidden">
-                            <p className="text-sm font-medium text-gray-900 truncate">{userName}</p>
+                            <p className="text-sm font-medium text-gray-900 truncate">{user?.fullName || user?.primaryEmailAddress?.emailAddress || userName}</p>
                             <p className="text-xs text-gray-500 truncate flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                 Online

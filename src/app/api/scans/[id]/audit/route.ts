@@ -74,7 +74,7 @@ export async function GET(
         const latestRunRow: any[] = sanitizeBigInts(
             await prisma.$queryRaw(
                 Prisma.sql`SELECT runId, MAX(runAt) as runAt
-                 FROM Result
+                 FROM "Result"
                  WHERE scanId = ${id} AND runId IS NOT NULL
                  GROUP BY runId
                  ORDER BY MAX(runAt) DESC
@@ -90,10 +90,10 @@ export async function GET(
         const results: any[] = sanitizeBigInts(
             latestRunId
                 ? await prisma.$queryRaw(
-                    Prisma.sql`SELECT * FROM Result WHERE scanId = ${id} AND runId = ${latestRunId}`
+                    Prisma.sql`SELECT * FROM "Result" WHERE scanId = ${id} AND runId = ${latestRunId}`
                 )
                 : await prisma.$queryRaw(
-                    Prisma.sql`SELECT * FROM Result WHERE scanId = ${id}`
+                    Prisma.sql`SELECT * FROM "Result" WHERE scanId = ${id}`
                 )
         ) as any[];
 

@@ -46,6 +46,7 @@ interface Scan {
     centerLng: number;
     businessName?: string;
     customPoints?: string; // JSON string
+    shareSlug?: string;
     results: Result[];
 }
 
@@ -303,23 +304,25 @@ export default function ScanReportPage({ params }: { params: Promise<{ id: strin
 
     const handleShare = async () => {
         if (sharing) return;
-        const url = window.location.href;
+        const shareUrl = scan?.shareSlug
+            ? `${window.location.origin}/report/${scan.shareSlug}`
+            : window.location.href;
 
         if (navigator.share) {
             setSharing(true);
             try {
                 await navigator.share({
-                    title: `GBP Rank Tracker Report: ${scan.keyword}`,
-                    text: `Check out the local ranking report for "${scan.keyword}"`,
-                    url: url,
+                    title: `Local Ranking Audit: ${scan?.keyword}`,
+                    text: `Check out the public local ranking report for "${scan?.keyword}"`,
+                    url: shareUrl,
                 });
             } catch (err: any) {
                 if (err.name !== 'AbortError' && err.name !== 'InvalidStateError') {
                     console.error('Error sharing:', err);
                 }
-                // Fallback to clipboard if it fails or if the user cancels but we want to be helpful
                 try {
-                    await navigator.clipboard.writeText(url);
+                    await navigator.clipboard.writeText(shareUrl);
+                    alert('Client pitch report link copied to clipboard!');
                 } catch (clipErr) {
                     console.error('Clipboard fallback failed:', clipErr);
                 }
@@ -328,8 +331,8 @@ export default function ScanReportPage({ params }: { params: Promise<{ id: strin
             }
         } else {
             try {
-                await navigator.clipboard.writeText(url);
-                alert('Report link copied to clipboard!');
+                await navigator.clipboard.writeText(shareUrl);
+                alert('Client pitch report link copied to clipboard!');
             } catch (err) {
                 console.error('Failed to copy:', err);
                 alert('Failed to copy link. Please copy the URL manually.');

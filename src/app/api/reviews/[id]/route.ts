@@ -27,14 +27,14 @@ export async function GET(
 
         // Get currentRunId via raw SQL (Prisma client doesn't know this field)
         const currentRunIdResult: any[] = await prisma.$queryRaw(
-            Prisma.sql`SELECT currentRunId FROM ReviewAnalysis WHERE id = ${id}`
+            Prisma.sql`SELECT currentRunId FROM "ReviewAnalysis" WHERE id = ${id}`
         );
         const currentRunId = currentRunIdResult[0]?.currentRunId || null;
 
         // Get all distinct runs for history timeline via raw SQL
         const rawRuns: any[] = await prisma.$queryRaw(
             Prisma.sql`SELECT runId, MIN(runAt) as runAt, COUNT(*) as reviewCount
-             FROM Review
+             FROM "Review"
              WHERE analysisId = ${id}
              GROUP BY runId
              ORDER BY MIN(runAt) ASC`
@@ -61,27 +61,27 @@ export async function GET(
             const matchingRun = rawRuns.find(r => (r.runId || `${id}-legacy`) === activeRunId);
             if (matchingRun && matchingRun.runId) {
                 reviews = await prisma.$queryRaw(
-                    Prisma.sql`SELECT * FROM Review WHERE analysisId = ${id} AND runId = ${matchingRun.runId} ORDER BY rating ASC${limitClause}`
+                    Prisma.sql`SELECT * FROM "Review" WHERE analysisId = ${id} AND runId = ${matchingRun.runId} ORDER BY rating ASC${limitClause}`
                 );
                 const countResult: any[] = await prisma.$queryRaw(
-                    Prisma.sql`SELECT COUNT(*) as cnt FROM Review WHERE analysisId = ${id} AND runId = ${matchingRun.runId}`
+                    Prisma.sql`SELECT COUNT(*) as cnt FROM "Review" WHERE analysisId = ${id} AND runId = ${matchingRun.runId}`
                 );
                 totalReviewCount = Number(countResult[0]?.cnt || 0);
             } else {
                 reviews = await prisma.$queryRaw(
-                    Prisma.sql`SELECT * FROM Review WHERE analysisId = ${id} AND runId IS NULL ORDER BY rating ASC${limitClause}`
+                    Prisma.sql`SELECT * FROM "Review" WHERE analysisId = ${id} AND runId IS NULL ORDER BY rating ASC${limitClause}`
                 );
                 const countResult: any[] = await prisma.$queryRaw(
-                    Prisma.sql`SELECT COUNT(*) as cnt FROM Review WHERE analysisId = ${id} AND runId IS NULL`
+                    Prisma.sql`SELECT COUNT(*) as cnt FROM "Review" WHERE analysisId = ${id} AND runId IS NULL`
                 );
                 totalReviewCount = Number(countResult[0]?.cnt || 0);
             }
         } else {
             reviews = await prisma.$queryRaw(
-                Prisma.sql`SELECT * FROM Review WHERE analysisId = ${id} ORDER BY rating ASC${limitClause}`
+                Prisma.sql`SELECT * FROM "Review" WHERE analysisId = ${id} ORDER BY rating ASC${limitClause}`
             );
             const countResult: any[] = await prisma.$queryRaw(
-                Prisma.sql`SELECT COUNT(*) as cnt FROM Review WHERE analysisId = ${id}`
+                Prisma.sql`SELECT COUNT(*) as cnt FROM "Review" WHERE analysisId = ${id}`
             );
             totalReviewCount = Number(countResult[0]?.cnt || 0);
         }

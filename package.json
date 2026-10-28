@@ -2,7 +2,6 @@
   "name": "gbpranktracker",
   "version": "1.9.6",
   "description": "GBP Rank Tracker — Local SEO Intelligence Platform",
-  "main": "electron/dist/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -27,11 +26,9 @@
     "@types/node": "^25.1.0",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
-    "better-sqlite3": "^12.8.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "country-state-city": "^3.2.1",
-    "electron-updater": "^6.3.9",
     "exceljs": "^4.4.0",
     "framer-motion": "^12.29.2",
     "jspdf": "^4.0.0",
@@ -41,7 +38,6 @@
     "natural": "^8.1.0",
     "next": "^16.1.6",
     "p-limit": "^7.3.3",
-    "playwright-core": "^1.58.1",
     "prisma": "^5.22.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -54,11 +50,7 @@
     "wink-nlp": "^2.4.0"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.3",
     "autoprefixer": "^10.4.24",
-    "electron": "^34.0.0",
-    "electron-builder": "^25.1.8",
-    "playwright": "^1.58.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18"
   }

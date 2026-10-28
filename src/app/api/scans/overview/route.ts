@@ -50,7 +50,7 @@ export async function GET(request: Request) {
         // 1. Find all COMPLETED scans matching the businessName
         const scans: any[] = sanitizeBigInts(
             await prisma.$queryRaw(
-                Prisma.sql`SELECT * FROM Scan
+                Prisma.sql`SELECT * FROM "Scan"
                  WHERE status = 'COMPLETED'
                    AND businessName = ${businessName}
                  ORDER BY createdAt DESC`
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
             const allRuns: any[] = sanitizeBigInts(
                 await prisma.$queryRaw(
                     Prisma.sql`SELECT runId, MIN(runAt) as runAt, COUNT(*) as resultCount
-                     FROM Result
+                     FROM "Result"
                      WHERE scanId = ${scan.id}
                      GROUP BY runId
                      ORDER BY MIN(runAt) ASC`
@@ -93,11 +93,11 @@ export async function GET(request: Request) {
             const latestResults: any[] = sanitizeBigInts(
                 latestRunId
                     ? await prisma.$queryRaw(
-                        Prisma.sql`SELECT topResults, rank FROM Result
+                        Prisma.sql`SELECT topResults, rank FROM "Result"
                          WHERE scanId = ${scan.id} AND runId = ${latestRunId}`
                     )
                     : await prisma.$queryRaw(
-                        Prisma.sql`SELECT topResults, rank FROM Result
+                        Prisma.sql`SELECT topResults, rank FROM "Result"
                          WHERE scanId = ${scan.id}`
                     )
             ) as any[];
@@ -110,7 +110,7 @@ export async function GET(request: Request) {
             if (previousRun && previousRun.runId) {
                 const previousResults: any[] = sanitizeBigInts(
                     await prisma.$queryRaw(
-                        Prisma.sql`SELECT topResults, rank FROM Result
+                        Prisma.sql`SELECT topResults, rank FROM "Result"
                          WHERE scanId = ${scan.id} AND runId = ${previousRun.runId}`
                     )
                 ) as any[];

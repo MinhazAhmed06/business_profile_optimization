@@ -1,68 +1,72 @@
-import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { NextResponse } from 'next/server';
 import { scrapeGoogleReviews } from '@/lib/reviewScraper';
 import { analyzeReviews } from '@/lib/reviewAnalyzer';
 import { analyzeSentiment } from '@/lib/sentimentEngine';
-import { logger } from '@/lib/logger';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(
-    req: Request,
+    request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params;
+    const analysis = await prisma.reviewAnalysis.findUnique({
+        where: { id },
+    });
+
+    if (!analysis) {
+        return NextResponse.json({ error: 'Review analysis not found' }, { status: 404 });
+    }
+
+    if (!analysis.businessUrl) {
+        return NextResponse.json({ error: 'No business URL found for this analysis' }, { status: 400 });
+    }
+
+    // Set up SSE stream
     const encoder = new TextEncoder();
-    const customReadable = new TransformStream();
-    const writer = customReadable.writable.getWriter();
+    const stream = new TransformStream();
+    const writer = stream.writable.getWriter();
 
-    const sendLog = async (msg: string, type: 'info' | 'error' | 'success' = 'info') => {
+    const sendLog = async (message: string, type: 'info' | 'warn' | 'error' | 'success' = 'info') => {
         try {
-            await writer.write(encoder.encode(`data: ${JSON.stringify({ msg, type })}\n\n`));
-        } catch { /* connection closed */ }
+            await writer.write(
+                encoder.encode(`data: ${JSON.stringify({ message, type, timestamp: new Date().toISOString() })}\n\n`)
+            );
+        } catch {
+            // Stream might be closed by client
+        }
     };
 
-    const sendResult = async (data: any) => {
-        try {
-            await writer.write(encoder.encode(`data: ${JSON.stringify({ result: data, type: 'complete' })}\n\n`));
-            await writer.close();
-        } catch { /* connection closed */ }
-    };
-
+    // Run the rerun process asynchronously
     (async () => {
         try {
-            const { id } = await params;
-
-            // Fetch existing analysis
-            const analysis = await prisma.reviewAnalysis.findUnique({
-                where: { id },
-            });
-
-            if (!analysis) {
-                await sendLog('Analysis not found', 'error');
-                await writer.close();
-                return;
-            }
-
             if (analysis.status === 'SCRAPING' || analysis.status === 'ANALYZING') {
                 await sendLog('Analysis is already running', 'error');
                 await writer.close();
                 return;
             }
 
-            // Count existing runs via raw SQL (Prisma client doesn't know new fields)
-            const existingRuns: any[] = await prisma.$queryRaw(
-                Prisma.sql`SELECT DISTINCT runId FROM Review WHERE analysisId = ${id}`
-            );
+            const existingRuns = await prisma.review.findMany({
+                where: { analysisId: id },
+                distinct: ['runId'],
+                select: { runId: true }
+            });
+
             const runNumber = existingRuns.length;
             const newRunId = `${id}-run${runNumber}`;
-            const runAt = new Date().toISOString();
+            const runAt = new Date();
 
             await sendLog(`Starting rerun #${runNumber + 1} for "${analysis.businessName}"...`);
 
-            // Update analysis status + currentRunId via raw SQL
-            await prisma.$executeRawUnsafe(
-                `UPDATE ReviewAnalysis SET status = 'SCRAPING', currentRunId = ?, error = NULL WHERE id = ?`,
-                newRunId, id
-            );
+            await prisma.reviewAnalysis.update({
+                where: { id },
+                data: {
+                    status: 'SCRAPING',
+                    currentRunId: newRunId,
+                    error: null
+                }
+            });
 
             // Scrape fresh reviews
             await sendLog(`Scraping reviews from ${analysis.businessUrl}...`);
@@ -71,7 +75,6 @@ export async function POST(
 
             await sendLog(`Scraped ${reviews.length} reviews. Saving to database...`);
 
-            // Update business info via standard Prisma (these fields are known)
             await prisma.reviewAnalysis.update({
                 where: { id },
                 data: {
@@ -83,27 +86,28 @@ export async function POST(
                 },
             });
 
-            // Save reviews in batched multi-row INSERTs (50 per batch)
+            // Save reviews in batched multi-row inserts
             const chunkSize = 50;
             for (let i = 0; i < reviews.length; i += chunkSize) {
                 const chunk = reviews.slice(i, i + chunkSize);
-                const placeholders = chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, 0, NULL)').join(', ');
-                const values: any[] = [];
-                chunk.forEach((r, idx) => {
-                    values.push(
-                        `${id}-${newRunId}-${i + idx}`,
-                        id, newRunId, runAt,
-                        r.reviewerName || '', r.reviewerUrl || null, r.reviewImage || null,
-                        r.reviewCount ?? null, r.photoCount ?? null, r.rating,
-                        r.text || null, r.publishedDate || null,
-                        r.responseText || null, r.responseDate || null
-                    );
+                await prisma.review.createMany({
+                    data: chunk.map((r, idx) => ({
+                        id: `${id}-${newRunId}-${i + idx}`,
+                        analysisId: id,
+                        runId: newRunId,
+                        runAt,
+                        reviewerName: r.reviewerName || 'Customer',
+                        reviewerUrl: r.reviewerUrl || null,
+                        reviewImage: r.reviewImage || null,
+                        reviewCount: r.reviewCount ?? null,
+                        photoCount: r.photoCount ?? null,
+                        rating: r.rating,
+                        text: r.text || null,
+                        publishedDate: r.publishedDate || null,
+                        responseText: r.responseText || null,
+                        responseDate: r.responseDate || null,
+                    }))
                 });
-                await prisma.$executeRawUnsafe(
-                    `INSERT INTO Review (id, analysisId, runId, runAt, reviewerName, reviewerUrl, reviewImage, reviewCount, photoCount, rating, text, publishedDate, responseText, responseDate, sentimentScore, sentimentLabel, isLikelyFake, fakeScore)
-                     VALUES ${placeholders}`,
-                    ...values
-                );
                 await sendLog(`Saved ${Math.min(i + chunkSize, reviews.length)} / ${reviews.length} reviews...`);
             }
 
@@ -111,13 +115,14 @@ export async function POST(
             await sendLog('Running 150+ metric deep analysis...');
             const analysisResult = analyzeReviews(reviews);
 
-            // Sentiment enrichment — fetch new run's reviews via raw SQL
+            // Sentiment enrichment
             await sendLog('Analyzing sentiment and fake patterns...');
-            const dbReviews: any[] = await prisma.$queryRaw(
-                Prisma.sql`SELECT id, text, rating, reviewCount, photoCount FROM Review WHERE analysisId = ${id} AND runId = ${newRunId}`
-            );
+            const dbReviews = await prisma.review.findMany({
+                where: { analysisId: id, runId: newRunId },
+                select: { id: true, text: true, rating: true, reviewCount: true, photoCount: true }
+            });
 
-            // Batch sentiment updates via Prisma transactions (50 per batch)
+            // Batch sentiment updates
             const SENTIMENT_BATCH_SIZE = 50;
             for (let i = 0; i < dbReviews.length; i += SENTIMENT_BATCH_SIZE) {
                 const batch = dbReviews.slice(i, i + SENTIMENT_BATCH_SIZE);
@@ -128,25 +133,21 @@ export async function POST(
                     if (!r.text || r.text.length < 20) fakeScore += 15;
                     if (r.reviewCount != null && Number(r.reviewCount) <= 1) fakeScore += 20;
                     if (!r.photoCount) fakeScore += 5;
-                    if ((Number(r.rating) === 1 || Number(r.rating) === 5) && (!r.text || r.text.length < 30)) fakeScore += 10;
-                    if (r.text && Number(r.rating) === 5 && sent.label === 'NEGATIVE') fakeScore += 15;
-                    if (r.text && Number(r.rating) === 1 && sent.label === 'POSITIVE') fakeScore += 15;
 
                     return prisma.review.update({
                         where: { id: r.id },
                         data: {
-                            sentimentScore: sent.compound,
+                            sentimentScore: sent.score,
                             sentimentLabel: sent.label,
-                            fakeScore: Math.min(fakeScore, 100),
-                            isLikelyFake: fakeScore >= 50,
+                            fakeScore: fakeScore,
+                            isLikelyFake: fakeScore > 30,
                         },
                     });
                 });
-
                 await prisma.$transaction(updates);
-                if (i % 200 === 0) await sendLog(`Analyzed ${Math.min(i + SENTIMENT_BATCH_SIZE, dbReviews.length)} / ${dbReviews.length} reviews...`);
             }
 
+            // Update analysis with final JSON data
             await prisma.reviewAnalysis.update({
                 where: { id },
                 data: {
@@ -155,26 +156,24 @@ export async function POST(
                 },
             });
 
-            await sendLog(`Rerun complete! ${reviews.length} reviews analyzed.`, 'success');
-            await sendResult({ id: analysis.id });
-
+            await sendLog('Rerun completed successfully!', 'success');
+            await writer.write(encoder.encode(`data: ${JSON.stringify({ type: 'done', success: true })}\n\n`));
+            await writer.close();
         } catch (error: any) {
-            logger.error(`Review rerun error: ${error.message}`, 'REVIEWS');
-            await sendLog(`Error: ${error.message}`, 'error');
-
-            try {
-                const { id } = await params;
-                await prisma.reviewAnalysis.update({
-                    where: { id },
-                    data: { status: 'FAILED', error: error.message },
-                });
-            } catch { /* ignore */ }
-
+            console.error('Rerun failed:', error);
+            await sendLog(`Rerun failed: ${error.message}`, 'error');
+            await prisma.reviewAnalysis.update({
+                where: { id },
+                data: {
+                    status: 'FAILED',
+                    error: error.message,
+                },
+            }).catch(() => { });
             await writer.close();
         }
     })();
 
-    return new NextResponse(customReadable.readable, {
+    return new Response(stream.readable, {
         headers: {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',

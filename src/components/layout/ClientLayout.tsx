@@ -1,12 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { PageTransition } from './PageTransition';
 import { UpdateNotifier } from './UpdateNotifier';
 import SchedulePoller from '@/components/SchedulePoller';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname();
+    const isPublicStandalone =
+        pathname?.startsWith('/report/') ||
+        pathname?.startsWith('/sign-in') ||
+        pathname?.startsWith('/sign-up');
+
     const [collapsed, setCollapsed] = useState(true);
 
     useEffect(() => {
@@ -20,7 +27,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         };
         window.addEventListener('storage', handleStorage);
 
-        // We also need a custom event for the same tab
         const handleCollapseChange = (e: any) => {
             setCollapsed(e.detail.collapsed);
         };
@@ -32,6 +38,10 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
+    if (isPublicStandalone) {
+        return <main className="min-h-screen bg-slate-950">{children}</main>;
+    }
+
     return (
         <div className="flex">
             <Sidebar />
@@ -42,11 +52,10 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
                 <footer className="mt-20 py-6 border-t border-gray-200/60 text-center">
                     <p className="text-xs text-gray-400 font-medium">
-                        Powered by <a href="https://vdesignu.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 font-bold transition-colors">vdesignu.com</a>
+                        Local SEO Intelligence Platform
                     </p>
                 </footer>
             </main>
-            <UpdateNotifier />
             <SchedulePoller />
         </div>
     );
